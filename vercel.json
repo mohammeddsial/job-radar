@@ -1,8 +1,22 @@
 {
+  "rewrites": [
+    { "source": "/linkedin-jobs/:path*", "destination": "https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/:path*" },
+    { "source": "/(.*)", "destination": "/" }
+  ],
   "crons": [
     {
       "path": "/api/scan",
       "schedule": "0 5 * * *"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        { "key": "X-Content-Type-Options", "value": "nosniff" },
+        { "key": "X-Frame-Options", "value": "SAMEORIGIN" },
+        { "key": "X-Robots-Tag", "value": "index, follow" }
+      ]
     }
   ]
 }

@@ -45,7 +45,7 @@ function SkillTag({ skill }: { skill: string }) {
   );
 }
 
-function JobCard({ job, index }: { job: Job; index: number }) {
+function JobCard({ job }: { job: Job }) {
   const [expanded, setExpanded] = useState(false);
   const [copied, setCopied] = useState(false);
 
@@ -64,11 +64,7 @@ function JobCard({ job, index }: { job: Job; index: number }) {
       overflow: "hidden",
       transition: "border-color 0.2s",
     }}>
-      {/* Card header */}
-      <div
-        onClick={() => setExpanded(!expanded)}
-        style={{ padding: "18px 20px", cursor: "pointer" }}
-      >
+      <div onClick={() => setExpanded(!expanded)} style={{ padding: "18px 20px", cursor: "pointer" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, marginBottom: 8 }}>
           <div style={{ flex: 1 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 4 }}>
@@ -103,8 +99,6 @@ function JobCard({ job, index }: { job: Job; index: number }) {
             flexShrink: 0,
           }}>▾</span>
         </div>
-
-        {/* Skill tags */}
         {job.skills?.length > 0 && (
           <div style={{ display: "flex", gap: 5, flexWrap: "wrap", marginTop: 10 }}>
             {job.skills.slice(0, 6).map((s, i) => <SkillTag key={i} skill={s} />)}
@@ -112,7 +106,6 @@ function JobCard({ job, index }: { job: Job; index: number }) {
         )}
       </div>
 
-      {/* Expanded panel */}
       {expanded && (
         <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)", padding: "16px 20px" }}>
           {job.description && (
@@ -120,7 +113,6 @@ function JobCard({ job, index }: { job: Job; index: number }) {
               {job.description}
             </p>
           )}
-
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 16 }}>
             {job.url && (
               <a href={job.url} target="_blank" rel="noreferrer" style={{
@@ -135,8 +127,6 @@ function JobCard({ job, index }: { job: Job; index: number }) {
               </a>
             )}
           </div>
-
-          {/* Cold message */}
           {job.cold_message && (
             <div style={{
               background: "rgba(125,226,196,0.04)",
@@ -187,32 +177,43 @@ export default function JobsPage() {
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState("all");
   const [loaded, setLoaded] = useState(false);
+  const [linkedinLoading, setLinkedinLoading] = useState(false);
+
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const JOBS_PER_PAGE = 50;
 
   const loadJobs = useCallback(async () => {
     try {
-      const res = await fetch("/api/jobs");
+      const res = await fetch(`/api/jobs?t=${Date.now()}`, { cache: "no-store" });
       const data = await res.json();
-      if (data.jobs?.length > 0) {
-        setJobs(data.jobs);
-        setLastScanned(data.lastScanned);
-      }
-    } catch {}
+      setJobs(data.jobs || []);
+      setLastScanned(data.lastScanned || null);
+    } catch {
+      setJobs([]);
+      setLastScanned(null);
+    }
     setLoaded(true);
   }, []);
 
-  useEffect(() => { loadJobs(); }, [loadJobs]);
+  useEffect(() => {
+    setJobs([]);
+    setLastScanned(null);
+    loadJobs();
+  }, [loadJobs]);
 
   const runScan = async () => {
     setScanning(true);
     setError(null);
     try {
-      const res = await fetch("/api/trigger", { method: "POST" });
+      const res = await fetch("/api/trigger", { method: "POST", cache: "no-store" });
       const data = await res.json();
       if (data.error) {
         setError(data.error);
-      } else if (data.jobs) {
-        setJobs(data.jobs);
+      } else {
+        setJobs(data.jobs || []);
         setLastScanned(new Date().toISOString());
+        setCurrentPage(1);
       }
     } catch (err: any) {
       setError(err.message);
@@ -221,6 +222,67 @@ export default function JobsPage() {
     }
   };
 
+  // ── Client‑side LinkedIn RSS fetch ────────────────────
+  const fetchLinkedInClient = useCallback(async () => {
+    setLinkedinLoading(true);
+    const keywords = [
+      "webflow", "wordpress%20developer", "react%20typescript", "frontend%20developer",
+      "ui%20ux%20designer", "product%20designer", "technical%20project%20manager",
+      "jira%20administrator", "scrum%20master", "webflow%20dubai", "react%20developer%20uae"
+    ];
+  
+    const newLinkedInJobs: Job[] = [];
+    for (const kw of keywords) {
+      try {
+        // Use the rewrite – it’s a same‑origin request, so no CORS issues
+        const url = `/linkedin-jobs/search?keywords=${kw}&location=Remote&start=0`;
+        const res = await fetch(url, {
+          headers: {
+            "User-Agent": navigator.userAgent, // your real browser’s UA
+          },
+        });
+        const xml = await res.text();
+  
+        if (!xml.includes("<item>")) continue;
+  
+        const items = xml.split("<item>");
+        for (const item of items) {
+          const title = item.match(/<title>(.*?)<\/title>/)?.[1];
+          const company = item.match(/<source>(.*?)<\/source>/)?.[1];
+          const link = item.match(/<link>(.*?)<\/link>/)?.[1];
+          const description = item.match(/<description>(.*?)<\/description>/)?.[1];
+          if (title && company && link) {
+            newLinkedInJobs.push({
+              title: title.replace(/&amp;/g, "&").trim(),
+              company: company.trim(),
+              location: "Remote",
+              url: link.trim(),
+              source: "LinkedIn",
+              posted: "Recent",
+              description: (description || "").replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim().slice(0, 300),
+              skills: [],
+              match_score: 0,
+              cold_message: "",
+            });
+          }
+        }
+      } catch (e) {
+        console.warn(`LinkedIn fetch error for "${kw}":`, e);
+      }
+    }
+  
+    // Merge without duplicates
+    const seen = new Set(jobs.map(j => j.url));
+    const fresh = newLinkedInJobs.filter(j => !seen.has(j.url));
+    setJobs(prev => [...prev, ...fresh]);
+    setLinkedinLoading(false);
+  }, [jobs]);
+
+  // Auto‑fetch LinkedIn on mount (after loaded)
+  useEffect(() => {
+    if (loaded) fetchLinkedInClient();
+  }, [loaded]); // eslint-disable-line
+
   const categories = ["all", "webflow", "react", "wordpress", "ui/ux"];
 
   const filtered = jobs.filter((j) => {
@@ -228,6 +290,14 @@ export default function JobsPage() {
     const text = `${j.title} ${j.skills?.join(" ")}`.toLowerCase();
     return text.includes(filter);
   });
+
+  const totalPages = Math.ceil(filtered.length / JOBS_PER_PAGE);
+  const startIdx = (currentPage - 1) * JOBS_PER_PAGE;
+  const paginatedJobs = filtered.slice(startIdx, startIdx + JOBS_PER_PAGE);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filter]);
 
   const formatDate = (iso: string) => {
     try {
@@ -240,7 +310,6 @@ export default function JobsPage() {
 
   return (
     <div style={{ minHeight: "100vh", background: "#090d13" }}>
-
       {/* Header */}
       <div style={{
         background: "linear-gradient(180deg, #0f1521 0%, #090d13 100%)",
@@ -263,7 +332,6 @@ export default function JobsPage() {
               Job Radar · Zahid Sher Sial
             </span>
           </div>
-
           <h1 style={{
             fontFamily: "'DM Serif Display', Georgia, serif",
             fontSize: "clamp(28px,5vw,42px)",
@@ -272,35 +340,49 @@ export default function JobsPage() {
           }}>
             Remote Jobs
           </h1>
-
           <p style={{ fontSize: 13, color: "#64748b", margin: "0 0 20px" }}>
-            Scans LinkedIn, Indeed, WeWorkRemotely & more · Auto-runs 10:00 AM PKT daily
+            Scans Remotive, Arbeitnow, Remote OK + LinkedIn RSS from your browser · Auto-runs daily
             {lastScanned && (
-              <span style={{ color: "#475569" }}> · Last scan: {formatDate(lastScanned)}</span>
+              <span style={{ color: "#475569" }}> · Last server scan: {formatDate(lastScanned)}</span>
             )}
           </p>
-
-          <button
-            onClick={runScan}
-            disabled={scanning}
-            style={{
-              padding: "11px 28px",
-              background: scanning ? "rgba(232,200,122,0.08)" : "rgba(232,200,122,0.12)",
-              color: "#e8c87a",
-              border: "1px solid rgba(232,200,122,0.25)",
-              borderRadius: 8, fontSize: 13, fontWeight: 600,
-              cursor: scanning ? "wait" : "pointer",
-              fontFamily: "'JetBrains Mono', monospace",
-            }}
-          >
-            {scanning ? "⏳ Scanning..." : "⟳ Scan Now"}
-          </button>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+            <button
+              onClick={runScan}
+              disabled={scanning}
+              style={{
+                padding: "11px 28px",
+                background: scanning ? "rgba(232,200,122,0.08)" : "rgba(232,200,122,0.12)",
+                color: "#e8c87a",
+                border: "1px solid rgba(232,200,122,0.25)",
+                borderRadius: 8, fontSize: 13, fontWeight: 600,
+                cursor: scanning ? "wait" : "pointer",
+                fontFamily: "'JetBrains Mono', monospace",
+              }}
+            >
+              {scanning ? "⏳ Scanning..." : "⟳ Server Scan"}
+            </button>
+            <button
+              onClick={fetchLinkedInClient}
+              disabled={linkedinLoading}
+              style={{
+                padding: "11px 28px",
+                background: linkedinLoading ? "rgba(34,197,94,0.08)" : "rgba(34,197,94,0.12)",
+                color: linkedinLoading ? "#4ade80" : "#22c55e",
+                border: "1px solid rgba(34,197,94,0.25)",
+                borderRadius: 8, fontSize: 13, fontWeight: 600,
+                cursor: linkedinLoading ? "wait" : "pointer",
+                fontFamily: "'JetBrains Mono', monospace",
+              }}
+            >
+              {linkedinLoading ? "Fetching LinkedIn..." : "🌐 Refresh LinkedIn"}
+            </button>
+          </div>
         </div>
       </div>
 
       {/* Body */}
       <div style={{ maxWidth: 860, margin: "0 auto", padding: "24px 24px 48px" }}>
-
         {error && (
           <div style={{
             background: "rgba(239,68,68,0.08)",
@@ -312,37 +394,76 @@ export default function JobsPage() {
           </div>
         )}
 
-        {/* Filter tabs */}
         {jobs.length > 0 && (
-          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 20 }}>
-            {categories.map((cat) => (
-              <button
-                key={cat}
-                onClick={() => setFilter(cat)}
-                style={{
-                  padding: "5px 14px", borderRadius: 99,
-                  background: filter === cat ? "rgba(232,200,122,0.12)" : "transparent",
-                  color: filter === cat ? "#e8c87a" : "#64748b",
-                  border: `1px solid ${filter === cat ? "rgba(232,200,122,0.25)" : "rgba(255,255,255,0.08)"}`,
-                  fontSize: 12, cursor: "pointer",
-                  fontFamily: "'JetBrains Mono', monospace",
-                  textTransform: "capitalize",
-                }}
-              >
-                {cat === "all" ? `All (${jobs.length})` : cat}
-              </button>
-            ))}
-          </div>
+          <>
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 20 }}>
+              {categories.map((cat) => (
+                <button
+                  key={cat}
+                  onClick={() => setFilter(cat)}
+                  style={{
+                    padding: "5px 14px", borderRadius: 99,
+                    background: filter === cat ? "rgba(232,200,122,0.12)" : "transparent",
+                    color: filter === cat ? "#e8c87a" : "#64748b",
+                    border: `1px solid ${filter === cat ? "rgba(232,200,122,0.25)" : "rgba(255,255,255,0.08)"}`,
+                    fontSize: 12, cursor: "pointer",
+                    fontFamily: "'JetBrains Mono', monospace",
+                    textTransform: "capitalize",
+                  }}
+                >
+                  {cat === "all" ? `All (${jobs.length})` : cat}
+                </button>
+              ))}
+            </div>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {paginatedJobs.map((job, i) => (
+                <JobCard key={i} job={job} />
+              ))}
+            </div>
+
+            {totalPages > 1 && (
+              <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 12, marginTop: 28 }}>
+                <button
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  style={{
+                    padding: "8px 16px",
+                    background: currentPage === 1 ? "transparent" : "rgba(232,200,122,0.08)",
+                    color: currentPage === 1 ? "#475569" : "#e8c87a",
+                    border: `1px solid ${currentPage === 1 ? "rgba(255,255,255,0.06)" : "rgba(232,200,122,0.15)"}`,
+                    borderRadius: 6,
+                    cursor: currentPage === 1 ? "not-allowed" : "pointer",
+                    fontFamily: "'JetBrains Mono', monospace",
+                    fontSize: 12,
+                  }}
+                >
+                  ← Prev
+                </button>
+                <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 12, color: "#94a3b8" }}>
+                  Page {currentPage} of {totalPages}
+                </span>
+                <button
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                  style={{
+                    padding: "8px 16px",
+                    background: currentPage === totalPages ? "transparent" : "rgba(232,200,122,0.08)",
+                    color: currentPage === totalPages ? "#475569" : "#e8c87a",
+                    border: `1px solid ${currentPage === totalPages ? "rgba(255,255,255,0.06)" : "rgba(232,200,122,0.15)"}`,
+                    borderRadius: 6,
+                    cursor: currentPage === totalPages ? "not-allowed" : "pointer",
+                    fontFamily: "'JetBrains Mono', monospace",
+                    fontSize: 12,
+                  }}
+                >
+                  Next →
+                </button>
+              </div>
+            )}
+          </>
         )}
 
-        {/* Jobs grid */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {filtered.map((job, i) => (
-            <JobCard key={i} job={job} index={i} />
-          ))}
-        </div>
-
-        {/* Empty state */}
         {loaded && jobs.length === 0 && !scanning && (
           <div style={{ textAlign: "center", padding: "60px 20px" }}>
             <div style={{
@@ -353,10 +474,7 @@ export default function JobsPage() {
               ⟳
             </div>
             <p style={{ fontSize: 14, color: "#475569", margin: "0 0 6px" }}>
-              No jobs yet — click <strong style={{ color: "#e8c87a" }}>Scan Now</strong> to fetch today's listings
-            </p>
-            <p style={{ fontSize: 12, color: "#334155" }}>
-              Or wait for the auto-scan at 10:00 AM PKT
+              No jobs yet — click <strong style={{ color: "#e8c87a" }}>Server Scan</strong> or <strong style={{ color: "#22c55e" }}>Refresh LinkedIn</strong>
             </p>
           </div>
         )}
