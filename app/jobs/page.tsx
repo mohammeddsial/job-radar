@@ -206,7 +206,7 @@ export default function JobsPage() {
     setScanning(true);
     setError(null);
     try {
-      const res = await fetch("/api/trigger", { method: "POST", cache: "no-store" });
+      const res = await fetch("/api/trigger", { method: "POST" });
       const data = await res.json();
       if (data.error) {
         setError(data.error);
@@ -222,7 +222,7 @@ export default function JobsPage() {
     }
   };
 
-  // ── Client‑side LinkedIn RSS fetch ────────────────────
+  // LinkedIn RSS via Vercel rewrite
   const fetchLinkedInClient = useCallback(async () => {
     setLinkedinLoading(true);
     const keywords = [
@@ -230,21 +230,14 @@ export default function JobsPage() {
       "ui%20ux%20designer", "product%20designer", "technical%20project%20manager",
       "jira%20administrator", "scrum%20master", "webflow%20dubai", "react%20developer%20uae"
     ];
-  
+
     const newLinkedInJobs: Job[] = [];
     for (const kw of keywords) {
       try {
-        // Use the rewrite – it’s a same‑origin request, so no CORS issues
         const url = `/linkedin-jobs/search?keywords=${kw}&location=Remote&start=0`;
-        const res = await fetch(url, {
-          headers: {
-            "User-Agent": navigator.userAgent, // your real browser’s UA
-          },
-        });
+        const res = await fetch(url);
         const xml = await res.text();
-  
         if (!xml.includes("<item>")) continue;
-  
         const items = xml.split("<item>");
         for (const item of items) {
           const title = item.match(/<title>(.*?)<\/title>/)?.[1];
@@ -270,15 +263,14 @@ export default function JobsPage() {
         console.warn(`LinkedIn fetch error for "${kw}":`, e);
       }
     }
-  
-    // Merge without duplicates
+
     const seen = new Set(jobs.map(j => j.url));
     const fresh = newLinkedInJobs.filter(j => !seen.has(j.url));
     setJobs(prev => [...prev, ...fresh]);
     setLinkedinLoading(false);
   }, [jobs]);
 
-  // Auto‑fetch LinkedIn on mount (after loaded)
+  // Auto‑fetch LinkedIn after load
   useEffect(() => {
     if (loaded) fetchLinkedInClient();
   }, [loaded]); // eslint-disable-line
@@ -341,9 +333,9 @@ export default function JobsPage() {
             Remote Jobs
           </h1>
           <p style={{ fontSize: 13, color: "#64748b", margin: "0 0 20px" }}>
-            Scans Remotive, Arbeitnow, Remote OK + LinkedIn RSS from your browser · Auto-runs daily
+            Remotive · Arbeitnow · RemoteOK · LinkedIn (RSS) · Auto‑runs daily
             {lastScanned && (
-              <span style={{ color: "#475569" }}> · Last server scan: {formatDate(lastScanned)}</span>
+              <span style={{ color: "#475569" }}> · Last scan: {formatDate(lastScanned)}</span>
             )}
           </p>
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
