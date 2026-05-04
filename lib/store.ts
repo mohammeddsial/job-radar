@@ -2,7 +2,7 @@ import fs from "fs";
 import path from "path";
 import { Job } from "./scanner";
 
-const DATA_FILE = path.join(process.cwd(), "data", "jobs.json");
+const DATA_FILE = path.join("/tmp", "jobs.json");
 
 export interface JobsData {
   jobs: Job[];
@@ -11,9 +11,6 @@ export interface JobsData {
 }
 
 export function saveJobs(jobs: Job[]): void {
-  const dir = path.dirname(DATA_FILE);
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-
   const data: JobsData = {
     jobs,
     lastScanned: new Date().toISOString(),
