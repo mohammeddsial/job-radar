@@ -1,9 +1,11 @@
 import fs from "fs";
 import path from "path";
+import os from "os";
 import { Job } from "./scanner";
 
-const DATA_FILE = path.join("/tmp", "jobs.json");
+// NEW
 
+const DATA_FILE = path.join(os.tmpdir(), "jobs.json");
 export interface JobsData {
   jobs: Job[];
   lastScanned: string;

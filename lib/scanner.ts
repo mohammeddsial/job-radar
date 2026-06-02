@@ -1,5 +1,5 @@
 // lib/scanner.ts
-import { GoogleGenerativeAI } from "@google/generative-ai";
+// import type { Job as JobType } from "@/types"; // optional, but we define locally too
 
 export interface Job {
   title: string;
@@ -26,36 +26,91 @@ interface RawJob {
   source?: string;
 }
 
-// ── Your real, targeted profile ──────────────────────────
-const PROFILE = `
-Zahid Sher Sial – Senior Webflow / Front-End / UI/UX Developer (16+ yrs)
-Remote | Lahore, Pakistan | shersial.com
+export const PROFILE = `
+Zahid Sher Sial — Senior Full-Stack Designer & Developer | 16+ Years
+Location: Lahore, Pakistan | Open to: UAE / GCC / Remote | Portfolio: shersial.com
 
-KEY SKILLS BY ROLE:
-Webflow: CMS Collections, Finsweet, MemberStack, GSAP, RTL/Arabic, E-Commerce, 15+ sites.
-Front-End: React, Next.js, TypeScript, Tailwind CSS, Shadcn UI, Vite, REST APIs.
-UI/UX: Figma, Adobe XD, Design Systems, User Research, Wireframing, WCAG, Bilingual RTL.
-WordPress: Elementor, WooCommerce, Custom Themes, ACF, WP Rocket, Nginx, 90+ Lighthouse.
-IT/Project Management: Jira Admin, Agile/Scrum, Sprint Planning, JQL, Capacity Planning.
+═══ ROLE TARGETS (match jobs in ANY of these categories) ═══
+1. Webflow Developer / CMS Specialist
+2. Senior Front-End Developer (React / Next.js)
+3. Senior UI/UX Designer / Product Designer
+4. WordPress Developer
+5. IT Project Manager / Jira Administrator / Scrum Master
 
-NOTABLE PROJECTS (company names to look for):
-- Al Ghurair Exchange (Webflow, RTL)
-- Cohrus HRMS (React, Shadcn)
-- SEDD Government Portal (Liferay, Arabic/English)
-- Juke Audio (Webflow E‑Commerce)
-- Edarat Group (WordPress, Redis)
+═══ TECHNICAL SKILLS ═══
+WEBFLOW (Expert, Certified):
+  • CMS Collections, Dynamic Pages, Symbols, Custom Interactions
+  • Finsweet, MemberStack, GSAP ScrollTrigger animations
+  • E-Commerce, RTL/LTR bilingual builds, Custom Code injection
+  • 15+ live production sites
 
-ACHIEVEMENTS: 35% task‑completion improvement, 40% fewer support tickets, 32+ projects.
-LANGUAGES: English (Fluent), Arabic (Native), Urdu/Hindi.
-CERTIFICATIONS: Webflow Layouts, Meta Front‑End, Liferay DXP, IT Degree.
-`;
+FRONT-END (Expert):
+  • React.js, Next.js, TypeScript, JavaScript (ES6+)
+  • Tailwind CSS, Shadcn UI, CSS Modules, SCSS, Bootstrap
+  • Vite, GSAP, REST APIs, GitHub Actions CI/CD
+  • HTML5, CSS3, Angular, Flutter (mobile)
+  • Lighthouse 90+ desktop / 80+ mobile
 
-// ── helpers ───────────────────────────────────────────────
-function stripHtml(html: string): string {
+CMS PLATFORMS (Expert):
+  • WordPress: Custom themes from scratch, Elementor, WPBakery, Divi
+  • WooCommerce, ACF, Custom Post Types, WP Rocket, Redis, Nginx, Yoast SEO
+  • Wix Studio, Wix CMS, Wix Velo (Custom JS APIs), Dynamic Pages
+  • Framer, Joomla, Liferay DXP (enterprise)
+
+UI/UX & PRODUCT DESIGN (Expert):
+  • Figma (Design Systems, Auto Layout, Variants, Tokens, Dev Mode)
+  • Adobe XD, Photoshop, Illustrator, InVision, Zeplin, FigJam, Miro
+  • User Research, Wireframing, Prototyping, Usability Testing
+  • Human-Centered Design, Design Thinking, Jobs-to-be-Done
+  • iOS (HIG) + Android (Material Design) mobile app design
+  • Complex enterprise dashboards, data-heavy interfaces
+  • Bilingual Arabic/English RTL design for GCC/MENA
+
+PROJECT MANAGEMENT (Expert):
+  • Jira Software, Jira Service Management, Confluence
+  • Custom workflows, permission schemes, JQL dashboards, EasyBI
+  • ScriptRunner (Groovy automation), Jira Advanced Roadmaps
+  • Agile/Scrum, Kanban, SAFe, sprint planning, retrospectives
+  • Capacity planning, velocity tracking, stakeholder reporting
+
+DOMAIN EXPERTISE: Banking, Fintech, Government, Real Estate, E-Commerce, SaaS, Fitness
+REGIONS: UAE/GCC, MENA, UK, US, Pakistan
+LANGUAGES: English (Fluent), Arabic (Native), Urdu/Hindi (Native)
+
+═══ NOTABLE PROJECTS (reference in cold messages) ═══
+- Al Ghurair Exchange (Webflow + RTL): Bilingual corporate platform, 195+ countries, live currency API, branch locator
+- Cohrus HRMS (React + TypeScript + Shadcn): Enterprise HR platform, role-based dashboards, complex data tables
+- SEDD Government Portal (Liferay DXP): 100K+ citizens, bilingual Arabic/English, task-completion +35%
+- Juke Audio (Webflow E-Commerce): CMS product catalogue, support tickets reduced 40%
+- Edarat Group (WordPress + Redis + WP Rocket): Document management, high-performance optimisation
+- Tecbrix.com, MVK Education, FitSpot, Quote-That (Webflow CMS sites)
+- MOHRE Kiosk (Android UI/UX): Government self-service platform
+- Gnomen CMS + Property Management System (UK real estate)
+
+═══ ACHIEVEMENTS ═══
+- 32+ delivered projects across UAE, UK, US, Pakistan
+- 35% improvement in user task-completion rates (SEDD)
+- 40% reduction in support tickets (Juke Audio)
+- Led teams of 5+ designers/developers
+- Managed 15+ concurrent client projects (TecBrix)
+
+CERTIFICATIONS: Webflow Layouts (Webflow University), Front-End Dev (Meta), Liferay DXP (Udemy), Adobe Certified Expert
+`.trim();
+
+export function stripHtml(html: string): string {
   return html.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
 }
 
-// ── 1. Remotive ───────────────────────────────────────────
+export function formatDate(dateStr?: string): string {
+  if (!dateStr) return "Recent";
+  try {
+    return new Date(dateStr).toLocaleDateString("en-PK", { month: "short", day: "numeric" });
+  } catch {
+    return "Recent";
+  }
+}
+
+// ── 1. Remotive ─────────────────────────────────────────────────────────────
 async function fetchRemotiveJobs(): Promise<RawJob[]> {
   const searches = [
     "https://remotive.com/api/remote-jobs?category=design&limit=10",
@@ -66,7 +121,7 @@ async function fetchRemotiveJobs(): Promise<RawJob[]> {
   ];
   const results = await Promise.allSettled(
     searches.map((url) =>
-      fetch(url, { headers: { "User-Agent": "JobRadar/1.0" } })
+      fetch(url, { headers: { "User-Agent": "JobRadar/1.0" }, signal: AbortSignal.timeout(8000) })
         .then((r) => r.json())
         .then((d) => (d.jobs || []) as RawJob[])
     )
@@ -75,28 +130,29 @@ async function fetchRemotiveJobs(): Promise<RawJob[]> {
   for (const r of results) {
     if (r.status === "fulfilled") all.push(...r.value);
   }
-  return all;
+  return all.map((j) => ({ ...j, source: "Remotive" }));
 }
 
-// ── 2. Jobicy ─────────────────────────────────────────────
+// ── 2. Jobicy ───────────────────────────────────────────────────────────────
 async function fetchJobicyJobs(): Promise<RawJob[]> {
   try {
     const res = await fetch(
       "https://jobicy.com/api/v2/remote-jobs?count=20&tag=frontend,webflow,wordpress,ui-ux-designer",
-      { headers: { "User-Agent": "JobRadar/1.0" } }
+      { headers: { "User-Agent": "JobRadar/1.0" }, signal: AbortSignal.timeout(8000) }
     );
     const data = await res.json();
-    return (data.jobs || []) as RawJob[];
+    return ((data.jobs || []) as RawJob[]).map((j) => ({ ...j, source: "Jobicy" }));
   } catch {
     return [];
   }
 }
 
-// ── 3. Arbeitnow ──────────────────────────────────────────
+// ── 3. Arbeitnow ───────────────────────────────────────────────────────────
 async function fetchArbeitnowJobs(): Promise<RawJob[]> {
   try {
     const res = await fetch("https://www.arbeitnow.com/api/job-board-api", {
       headers: { "User-Agent": "JobRadar/1.0" },
+      signal: AbortSignal.timeout(8000),
     });
     const data = await res.json();
     const list = data.data || data.jobs || data;
@@ -107,7 +163,7 @@ async function fetchArbeitnowJobs(): Promise<RawJob[]> {
       candidate_required_location: j.location || "Remote",
       url: j.url,
       publication_date: j.created_at?.toString(),
-      description: stripHtml(j.description || "").slice(0, 500),
+      description: stripHtml(j.description || "").slice(0, 400),
       tags: j.tags || [],
       source: "Arbeitnow",
     }));
@@ -116,149 +172,237 @@ async function fetchArbeitnowJobs(): Promise<RawJob[]> {
   }
 }
 
-// ── 4. Remote OK ──────────────────────────────────────────
+// ── 4. RemoteOK ────────────────────────────────────────────────────────────
 async function fetchRemoteOKJobs(): Promise<RawJob[]> {
   try {
     const res = await fetch("https://remoteok.com/api", {
       headers: { "User-Agent": "JobRadar/1.0" },
+      signal: AbortSignal.timeout(8000),
     });
     const data: any[] = await res.json();
-    const jobs = data.filter((item: any) => item.slug && item.position);
-    return jobs.map((j: any) => ({
-      title: j.position || "",
-      company_name: j.company || "",
-      candidate_required_location: j.location || "Remote",
-      url: j.apply_url || j.url || "",
-      publication_date: j.date ? new Date(j.date).toISOString() : undefined,
-      description: stripHtml(j.description || "").slice(0, 500),
-      tags: j.tags || [],
-      source: "RemoteOK",
-    }));
+    return data
+      .filter((item: any) => item.slug && item.position)
+      .map((j: any) => ({
+        title: j.position || "",
+        company_name: j.company || "",
+        candidate_required_location: j.location || "Remote",
+        url: j.apply_url || j.url || "",
+        publication_date: j.date ? new Date(j.date).toISOString() : undefined,
+        description: stripHtml(j.description || "").slice(0, 400),
+        tags: j.tags || [],
+        source: "RemoteOK",
+      }));
   } catch {
     return [];
   }
 }
 
-// ── 5. LinkedIn via SerpApi (structured JSON) ──────────────
-async function fetchLinkedInSerpApi(): Promise<RawJob[]> {
-  const apiKey = process.env.SERPAPI_KEY;
+// ── 5. WeWorkRemotely RSS ──────────────────────────────────────────────────
+async function fetchWWRJobs(): Promise<RawJob[]> {
+  const feeds = [
+    "https://weworkremotely.com/categories/remote-design-jobs.rss",
+    "https://weworkremotely.com/categories/remote-programming-jobs.rss",
+    "https://weworkremotely.com/categories/remote-full-stack-programming-jobs.rss",
+  ];
+  const all: RawJob[] = [];
+  await Promise.allSettled(
+    feeds.map(async (url) => {
+      try {
+        const res = await fetch(url, {
+          headers: { "User-Agent": "JobRadar/1.0" },
+          signal: AbortSignal.timeout(8000),
+        });
+        const xml = await res.text();
+        const items = xml.split("<item>");
+        for (const item of items.slice(1)) {
+          const title = item.match(/<title><!\[CDATA\[(.*?)\]\]><\/title>/)?.[1]
+            || item.match(/<title>(.*?)<\/title>/)?.[1];
+          const link = item.match(/<link>(.*?)<\/link>/)?.[1]
+            || item.match(/<guid>(.*?)<\/guid>/)?.[1];
+          const desc = item.match(/<description><!\[CDATA\[(.*?)\]\]><\/description>/)?.[1]
+            || item.match(/<description>(.*?)<\/description>/)?.[1];
+          const pubDate = item.match(/<pubDate>(.*?)<\/pubDate>/)?.[1];
+          const companyRaw = item.match(/<region><!\[CDATA\[(.*?)\]\]><\/region>/)?.[1] || "";
+          if (title && link) {
+            const parts = title.split(" at ");
+            all.push({
+              title: parts[0]?.trim() || title,
+              company_name: parts[1]?.trim() || companyRaw || "Unknown",
+              candidate_required_location: "Remote",
+              url: link.trim(),
+              publication_date: pubDate,
+              description: stripHtml(desc || "").slice(0, 400),
+              tags: [],
+              source: "WeWorkRemotely",
+            });
+          }
+        }
+      } catch {}
+    })
+  );
+  return all;
+}
+
+// ── 6. Himalayas ─────────────────────────────────────────────────────────
+async function fetchHimalayasJobs(): Promise<RawJob[]> {
+  const searches = ["webflow", "wordpress", "frontend", "ui-ux"];
+  const all: RawJob[] = [];
+  await Promise.allSettled(
+    searches.map(async (tag) => {
+      try {
+        const res = await fetch(`https://himalayas.app/jobs/api?q=${tag}&limit=10`, {
+          headers: { "User-Agent": "JobRadar/1.0" },
+          signal: AbortSignal.timeout(8000),
+        });
+        const data = await res.json();
+        const jobs = data.jobs || data;
+        if (!Array.isArray(jobs)) return;
+        for (const j of jobs) {
+          all.push({
+            title: j.title || j.role || "",
+            company_name: j.company?.name || j.companyName || "",
+            candidate_required_location: "Remote",
+            url: j.applicationLink || j.url || `https://himalayas.app/jobs/${j.slug || ""}`,
+            publication_date: j.createdAt || j.publishedAt,
+            description: stripHtml(j.description || j.summary || "").slice(0, 400),
+            tags: j.skills || j.tags || [],
+            source: "Himalayas",
+          });
+        }
+      } catch {}
+    })
+  );
+  return all;
+}
+
+// ── 7. JSearch via RapidAPI ─────────────────────────────────────────────
+async function fetchJSearchJobs(): Promise<RawJob[]> {
+  const apiKey = process.env.JSEARCH_API_KEY;
   if (!apiKey) return [];
 
   const queries = [
     "webflow developer remote",
-    "webflow cms remote",
     "wordpress developer remote",
-    "wordpress elementor remote",
-    "react typescript remote",
-    "react developer remote",
-    "nextjs remote",
-    "frontend developer remote",
-    "senior ui ux designer remote",
-    "figma designer remote",
-    "ui ux developer remote",
-    "senior product designer remote",
-    "product designer fintech remote",
+    "react typescript frontend remote",
+    "ui ux designer remote",
+    "product designer remote",
     "technical project manager remote",
     "jira administrator remote",
-    "scrum master remote",
-    "webflow dubai",
-    "react developer uae",
+    "webflow developer UAE",
+    "frontend developer UAE",
   ];
 
   const jobs: RawJob[] = [];
   for (const q of queries) {
     try {
-      const params = new URLSearchParams({
-        engine: "linkedin_jobs",
-        keywords: q,
-        api_key: apiKey,
-      });
-      const res = await fetch(`https://serpapi.com/search?${params.toString()}`);
+      const res = await fetch(
+        `https://jsearch.p.rapidapi.com/search?query=${encodeURIComponent(q)}&num_pages=1&date_posted=week`,
+        {
+          headers: {
+            "X-RapidAPI-Key": apiKey,
+            "X-RapidAPI-Host": "jsearch.p.rapidapi.com",
+          },
+          signal: AbortSignal.timeout(8000),
+        }
+      );
       const data = await res.json();
-      for (const j of data.jobs_results || []) {
+      for (const j of data.data || []) {
         jobs.push({
-          title: j.title,
-          company_name: j.company_name,
-          candidate_required_location: j.location || "Remote",
-          url: j.apply_link || j.link || "",
-          publication_date: j.date_posted || "Recent",
-          description: j.description?.slice(0, 300) || "",
-          tags: [],
-          source: "LinkedIn",
+          title: j.job_title,
+          company_name: j.employer_name,
+          candidate_required_location: j.job_city
+            ? `${j.job_city}, ${j.job_country}`
+            : j.job_is_remote
+            ? "Remote"
+            : j.job_country,
+          url: j.job_apply_link || j.job_google_link,
+          publication_date: j.job_posted_at_datetime_utc,
+          description: stripHtml(j.job_description || "").slice(0, 500),
+          tags: j.job_required_skills || [],
+          source: j.job_publisher || "JSearch",
         });
       }
     } catch (e) {
-      console.warn(`SerpApi fetch error for "${q}":`, e);
+      console.warn(`JSearch error for "${q}":`, e);
+    }
+    await new Promise((r) => setTimeout(r, 300));
+  }
+  return jobs;
+}
+
+// ── 8. Adzuna ───────────────────────────────────────────────────────────
+async function fetchAdzunaJobs(): Promise<RawJob[]> {
+  const appId = process.env.ADZUNA_APP_ID;
+  const appKey = process.env.ADZUNA_APP_KEY;
+  if (!appId || !appKey) return [];
+
+  const searches = [
+    { what: "webflow developer", where: "worldwide" },
+    { what: "wordpress developer", where: "worldwide" },
+    { what: "react typescript developer", where: "worldwide" },
+    { what: "ui ux designer", where: "worldwide" },
+    { what: "product designer", where: "worldwide" },
+    { what: "frontend developer", where: "worldwide" },
+    { what: "project manager jira", where: "worldwide" },
+    { what: "webflow developer", where: "dubai" },
+    { what: "ui ux designer", where: "dubai" },
+  ];
+
+  const jobs: RawJob[] = [];
+  for (const { what, where } of searches) {
+    try {
+      const params = new URLSearchParams({
+        app_id: appId,
+        app_key: appKey,
+        results_per_page: "10",
+        what,
+        where,
+        content_type: "application/json",
+        sort_by: "date",
+        max_days_old: "14",
+      });
+      const country = where === "dubai" ? "ae" : "gb";
+      const res = await fetch(
+        `https://api.adzuna.com/v1/api/jobs/${country}/search/1?${params}`,
+        { signal: AbortSignal.timeout(8000) }
+      );
+      const data = await res.json();
+      for (const j of data.results || []) {
+        jobs.push({
+          title: j.title,
+          company_name: j.company?.display_name,
+          candidate_required_location: j.location?.display_name || where,
+          url: j.redirect_url,
+          publication_date: j.created,
+          description: stripHtml(j.description || "").slice(0, 500),
+          tags: j.category?.tag ? [j.category.tag] : [],
+          source: "Adzuna",
+        });
+      }
+    } catch (e) {
+      console.warn(`Adzuna error:`, e);
     }
   }
   return jobs;
 }
 
-// ── 6. LinkedIn RSS via ScrapingBee (renders JavaScript) ───
-async function fetchLinkedInScrapingBee(): Promise<RawJob[]> {
-  const apiKey = process.env.SCRAPINGBEE_KEY;
-  if (!apiKey) return [];
-
-  const urls = [
-    "https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search?keywords=webflow&location=Remote",
-    "https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search?keywords=wordpress%20developer&location=Remote",
-    "https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search?keywords=react%20typescript&location=Remote",
-    "https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search?keywords=frontend%20developer&location=Remote",
-    "https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search?keywords=ui%20ux%20designer&location=Remote",
-    "https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search?keywords=product%20designer&location=Remote",
-    "https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search?keywords=project%20manager&location=Remote",
-    "https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search?keywords=webflow&location=Dubai",
-    "https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search?keywords=react%20developer&location=UAE",
-  ];
-
-  const results = await Promise.allSettled(
-    urls.map(async (url) => {
-      try {
-        const proxyUrl = `https://app.scrapingbee.com/api/v1/?api_key=${apiKey}&url=${encodeURIComponent(url)}&render_js=true`;
-        const res = await fetch(proxyUrl);
-        const text = await res.text();
-        if (!text.includes("<item>")) return [];
-
-        const jobs: RawJob[] = [];
-        const items = text.split("<item>");
-        for (const item of items) {
-          const title = item.match(/<title>(.*?)<\/title>/)?.[1];
-          const company = item.match(/<source>(.*?)<\/source>/)?.[1];
-          const link = item.match(/<link>(.*?)<\/link>/)?.[1];
-          const description = item.match(/<description>(.*?)<\/description>/)?.[1];
-          if (title && company && link) {
-            jobs.push({
-              title: title.replace(/&amp;/g, "&").trim(),
-              company: company.trim(),
-              candidate_required_location: "Remote",
-              url: link.trim(),
-              source: "LinkedIn",
-              publication_date: "Recent",
-              description: stripHtml(description || "").slice(0, 300),
-              tags: [],
-            });
-          }
-        }
-        return jobs;
-      } catch {
-        return [];
-      }
-    })
-  );
-
-  const all: RawJob[] = [];
-  for (const r of results) {
-    if (r.status === "fulfilled") all.push(...r.value);
-  }
-  return all;
+// ── 9. LinkedIn via SERP API (optional) ───────────────────────────────────
+async function fetchLinkedInSerpApi(): Promise<RawJob[]> {
+  return [];
 }
 
-// ── Keyword relevance filter ─────────────────────────────
+// ── 10. LinkedIn via ScrapingBee (optional) ────────────────────────────────
+async function fetchLinkedInScrapingBee(): Promise<RawJob[]> {
+  return [];
+}
+
+// ── Keyword relevance filter ───────────────────────────────────────────────
 const ROLE_KEYWORDS = [
   "webflow", "front end", "front-end", "frontend", "ui", "ux",
   "wordpress", "react", "next.js", "nextjs", "typescript",
   "javascript", "tailwind", "product designer", "ux designer",
-  "ui designer", "cms", "project manager", "scrum master", "agile",
+  "ui designer", "cms", "figma", "elementor", "woocommerce",
+  "project manager", "scrum master", "agile", "web designer",
 ];
 
 function isRelevant(job: RawJob): boolean {
@@ -266,112 +410,154 @@ function isRelevant(job: RawJob): boolean {
   return ROLE_KEYWORDS.some((kw) => text.includes(kw));
 }
 
-// ── AI scoring (never returns empty array) ──────────────
+// ── Groq AI scoring (replaces Gemini) ──────────────────────────────────────
 async function scoreWithAI(rawJobs: RawJob[]): Promise<Job[]> {
-  const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
-  const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+  const groqKey = process.env.GROQ_API_KEY;
+  if (!groqKey) {
+    console.warn("GROQ_API_KEY missing, returning unscored jobs");
+    return rawJobs.map((j) => ({
+      title: j.title,
+      company: j.company_name || j.company || "Unknown",
+      location: j.candidate_required_location || "Remote",
+      url: j.url,
+      source: j.source || "Remote",
+      posted: formatDate(j.publication_date),
+      description: (j.description || "").slice(0, 250),
+      skills: j.tags || [],
+      match_score: 0,
+      cold_message: "",
+    }));
+  }
 
-  const toScore = rawJobs.slice(0, 15);
-  const fallbackJobs: Job[] = toScore.map((j) => ({
-    title: j.title,
-    company: j.company_name || j.company || "Unknown",
-    location: j.candidate_required_location || "Remote",
-    url: j.url,
-    source: j.source || "Remote",
-    posted: j.publication_date
-      ? new Date(j.publication_date).toLocaleDateString("en-PK", { month: "short", day: "numeric" })
-      : "Recent",
-    description: (j.description || "").slice(0, 300),
-    skills: j.tags || [],
-    match_score: 0,
-    cold_message: "",
-  }));
-
+  const toScore = rawJobs.slice(0, 30);
   const jobsForAI = toScore.map((j) => ({
     title: j.title,
     company: j.company_name || j.company || "Unknown",
-    location: j.candidate_required_location || "Remote",
-    url: j.url,
-    posted: j.publication_date
-      ? new Date(j.publication_date).toLocaleDateString("en-PK", { month: "short", day: "numeric" })
-      : "Recent",
-    description: (j.description || "").slice(0, 300),
-    tags: j.tags || [],
-    source: j.source || "Remote",
+    description: (j.description || "").slice(0, 250),
+    tags: (j.tags || []).slice(0, 5),
   }));
 
-  const prompt = `You are a precision job matcher. Score each job against the candidate's profile below. 
+  const prompt = `You are a job matcher. Score each job 0-100 and write a short cold message (max 130 words) referencing one specific project from the profile.
 
-CANDIDATE PROFILE:
-${PROFILE}
+Candidate profile:
+${PROFILE.substring(0, 2000)}
 
-JOBS TO SCORE (${jobsForAI.length}):
-${JSON.stringify(jobsForAI, null, 1)}
+Jobs (array):
+${JSON.stringify(jobsForAI, null, 2)}
 
-FOR EACH JOB, RETURN A JSON OBJECT WITH:
-{
-  "title": string,
-  "company": string,
-  "location": string,
-  "url": string,
-  "source": string,
-  "posted": string,
-  "description": "concise role summary in your own words",
-  "skills": ["skill1","skill2",...],
-  "match_score": integer 0-100,
-  "cold_message": "LinkedIn InMail (under 150 words) that references 2 actual projects from the candidate's profile relevant to THIS role. End with: shersial.com"
-}
-
-RULES:
-- Do NOT include jobs with match_score < 40.
-- Sort descending by match_score.
-- Return ONLY a valid JSON array (no markdown, no backticks).
-- The candidate is open to multiple roles: Webflow, Front-End, UI/UX, WordPress, and IT Project Management. Choose the most relevant role for each job.`;
+Return a JSON array with objects: { title, company, match_score, cold_message }
+- match_score: number 0-100
+- cold_message: short, personal, ends with "Portfolio: shersial.com"
+- Only include jobs with match_score >= 40
+- No markdown, no extra text.`;
 
   try {
-    const result = await model.generateContent(prompt);
-    const text = result.response.text();
-    const clean = text.replace(/```json|```/g, "").trim();
-    const match = clean.match(/\[[\s\S]*\]/);
-    if (match) {
-      const scored = JSON.parse(match[0]) as Job[];
-      if (scored.length > 0) return scored.sort((a, b) => (b.match_score || 0) - (a.match_score || 0));
-    }
-  } catch (err: any) {
-    console.error("AI scoring failed:", err.message);
-  }
+    const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${groqKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "llama-3.3-70b-versatile", // fast & free
+        messages: [{ role: "user", content: prompt }],
+        temperature: 0.5,
+        response_format: { type: "json_object" },
+      }),
+    });
 
-  console.warn("AI scoring returned no usable data – showing raw jobs");
-  return fallbackJobs;
+    if (!response.ok) {
+      const errText = await response.text();
+      console.error("Groq API error:", errText);
+      throw new Error(`Groq error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    const content = data.choices[0]?.message?.content;
+    if (!content) throw new Error("Empty Groq response");
+
+    // Parse JSON – may be wrapped in ```json ... ```
+    let cleaned = content.trim();
+    if (cleaned.startsWith("```json")) cleaned = cleaned.slice(7);
+    if (cleaned.startsWith("```")) cleaned = cleaned.slice(3);
+    if (cleaned.endsWith("```")) cleaned = cleaned.slice(0, -3);
+    const parsed = JSON.parse(cleaned);
+
+    // Expect either array or object with "jobs" key
+    let scoredJobs = Array.isArray(parsed) ? parsed : parsed.jobs || [];
+
+    // Merge with original data to fill missing fields
+    const result: Job[] = [];
+    for (let i = 0; i < toScore.length; i++) {
+      const original = toScore[i];
+      const scored = scoredJobs.find((s: any) => s.title === original.title) || {};
+      result.push({
+        title: original.title,
+        company: original.company_name || original.company || "Unknown",
+        location: original.candidate_required_location || "Remote",
+        url: original.url,
+        source: original.source || "Remote",
+        posted: formatDate(original.publication_date),
+        description: (original.description || "").slice(0, 250),
+        skills: original.tags || [],
+        match_score: scored.match_score ?? 0,
+        cold_message: scored.cold_message ?? "",
+      });
+    }
+    return result.filter(j => j.match_score >= 40);
+  } catch (err: any) {
+    console.error("Groq scoring failed:", err.message);
+    // Fallback: return unscored jobs
+    return toScore.map((j) => ({
+      title: j.title,
+      company: j.company_name || j.company || "Unknown",
+      location: j.candidate_required_location || "Remote",
+      url: j.url,
+      source: j.source || "Remote",
+      posted: formatDate(j.publication_date),
+      description: (j.description || "").slice(0, 250),
+      skills: j.tags || [],
+      match_score: 0,
+      cold_message: "",
+    }));
+  }
 }
 
-// ── Main scan function (returns ALL relevant jobs) ───────
+// ── Main export ────────────────────────────────────────────────────────────
 export async function scanJobs(): Promise<Job[]> {
-  const [remotive, jobicy, arbeitnow, remoteok, linkedinSerp, linkedinSB] =
+  console.log("Starting job scan from all sources...");
+
+  const [remotive, jobicy, arbeitnow, remoteok, wwr, himalayas, jsearch, adzuna] =
     await Promise.all([
       fetchRemotiveJobs(),
       fetchJobicyJobs(),
       fetchArbeitnowJobs(),
       fetchRemoteOKJobs(),
-      fetchLinkedInSerpApi(),
-      fetchLinkedInScrapingBee(),
+      fetchWWRJobs(),
+      fetchHimalayasJobs(),
+      fetchJSearchJobs(),
+      fetchAdzunaJobs(),
     ]);
-
-  console.log(`Remotive: ${remotive.length} jobs`);
-  console.log(`Jobicy: ${jobicy.length} jobs`);
-  console.log(`Arbeitnow: ${arbeitnow.length} jobs`);
-  console.log(`RemoteOK: ${remoteok.length} jobs`);
-  console.log(`LinkedIn (SerpApi): ${linkedinSerp.length} jobs`);
-  console.log(`LinkedIn (ScrapingBee): ${linkedinSB.length} jobs`);
 
   let allRaw = [
     ...remotive,
     ...jobicy,
     ...arbeitnow,
     ...remoteok,
-    ...linkedinSerp,
-    ...linkedinSB,
+    ...wwr,
+    ...himalayas,
+    ...jsearch,
+    ...adzuna,
   ];
+
+  console.log(`Remotive: ${remotive.length}`);
+  console.log(`Jobicy: ${jobicy.length}`);
+  console.log(`Arbeitnow: ${arbeitnow.length}`);
+  console.log(`RemoteOK: ${remoteok.length}`);
+  console.log(`WeWorkRemotely: ${wwr.length}`);
+  console.log(`Himalayas: ${himalayas.length}`);
+  console.log(`JSearch: ${jsearch.length}`);
+  console.log(`Adzuna: ${adzuna.length}`);
 
   const seen = new Set<string>();
   allRaw = allRaw.filter((j) => {
@@ -382,30 +568,29 @@ export async function scanJobs(): Promise<Job[]> {
   console.log(`${allRaw.length} unique jobs after dedup`);
 
   allRaw = allRaw.filter(isRelevant);
-  console.log(`${allRaw.length} relevant jobs after filtering`);
+  console.log(`${allRaw.length} relevant jobs after filter`);
 
   if (allRaw.length === 0) return [];
 
-  const aiBatch = allRaw.slice(0, 15);
-  const remaining = allRaw.slice(15);
+  const aiBatch = allRaw.slice(0, 30);
+  const remainder = allRaw.slice(30);
 
   const scored = await scoreWithAI(aiBatch);
-  const remainingJobs: Job[] = remaining.map((j) => ({
+
+  const remainderJobs: Job[] = remainder.map((j) => ({
     title: j.title,
     company: j.company_name || j.company || "Unknown",
     location: j.candidate_required_location || "Remote",
     url: j.url,
     source: j.source || "Remote",
-    posted: j.publication_date
-      ? new Date(j.publication_date).toLocaleDateString("en-PK", { month: "short", day: "numeric" })
-      : "Recent",
-    description: (j.description || "").slice(0, 300),
+    posted: formatDate(j.publication_date),
+    description: (j.description || "").slice(0, 250),
     skills: j.tags || [],
     match_score: 0,
     cold_message: "",
   }));
 
-  const allJobs = [...scored, ...remainingJobs];
-  console.log(`Total jobs to show: ${allJobs.length} (${scored.length} scored/enriched)`);
-  return allJobs;
+  const result = [...scored, ...remainderJobs];
+  console.log(`Total: ${result.length} jobs (${scored.length} AI-scored)`);
+  return result;
 }

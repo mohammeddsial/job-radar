@@ -1,66 +1,73 @@
 // app/api/linkedin-proxy/route.ts
 import { NextResponse } from "next/server";
 
-const RSS_URLS = [
-  "https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search?keywords=webflow&location=Remote",
-  "https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search?keywords=wordpress%20developer&location=Remote",
-  "https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search?keywords=react%20typescript&location=Remote",
-  "https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search?keywords=frontend%20developer&location=Remote",
-  "https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search?keywords=ui%20ux%20designer&location=Remote",
-  "https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search?keywords=product%20designer&location=Remote",
-  "https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search?keywords=technical%20project%20manager&location=Remote",
-  "https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search?keywords=jira%20administrator&location=Remote",
-  "https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search?keywords=scrum%20master&location=Remote",
-  "https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search?keywords=webflow&location=Dubai",
-  "https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search?keywords=react%20developer&location=UAE",
-];
-
 export async function GET() {
+  const apiKey = process.env.JSEARCH_API_KEY;
+  if (!apiKey) {
+    console.warn("JSEARCH_API_KEY missing");
+    return NextResponse.json({ jobs: [] });
+  }
+
+  const queries = [
+    "webflow developer remote",
+    "wordpress developer remote",
+    "react typescript frontend remote",
+    "ui ux designer remote",
+    "product designer remote",
+    "frontend developer remote",
+    "webflow developer UAE",
+    "react developer UAE",
+    "next.js developer remote",
+  ];
+
   const allJobs: any[] = [];
 
-  for (const url of RSS_URLS) {
+  for (const q of queries) {
     try {
-      const res = await fetch(url, {
+      const url = new URL("https://jsearch.p.rapidapi.com/search");
+      url.searchParams.append("query", q);
+      url.searchParams.append("num_pages", "1");
+      url.searchParams.append("date_posted", "week");
+
+      const res = await fetch(url.toString(), {
         headers: {
-          "User-Agent":
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+          "x-rapidapi-key": apiKey,
+          "x-rapidapi-host": "jsearch.p.rapidapi.com",
         },
-        signal: AbortSignal.timeout(10000),
+        signal: AbortSignal.timeout(8000),
       });
-      const xml = await res.text();
 
-      if (!xml.includes("<item>")) continue;
+      const data = await res.json();
+      const jobs = data.data || [];
 
-      const items = xml.split("<item>");
-      for (const item of items) {
-        const title = item.match(/<title>(.*?)<\/title>/)?.[1];
-        const company = item.match(/<source>(.*?)<\/source>/)?.[1];
-        const link = item.match(/<link>(.*?)<\/link>/)?.[1];
-        const description = item.match(/<description>(.*?)<\/description>/)?.[1];
-        if (title && company && link) {
-          allJobs.push({
-            title: title.replace(/&amp;/g, "&").trim(),
-            company: company.trim(),
-            location: "Remote",
-            url: link.trim(),
-            posted: "Recent",
-            description: (description || "")
-              .replace(/<[^>]*>/g, " ")
-              .replace(/\s+/g, " ")
-              .trim()
-              .slice(0, 300),
-          });
-        }
+      for (const j of jobs) {
+        allJobs.push({
+          title: j.job_title,
+          company: j.employer_name,
+          location: j.job_city
+            ? `${j.job_city}, ${j.job_country}`
+            : j.job_is_remote
+            ? "Remote"
+            : j.job_country || "Remote",
+          url: j.job_apply_link || j.job_google_link,
+          source: j.job_publisher || "JSearch (LinkedIn/Indeed)",
+          posted: j.job_posted_at_datetime_utc || "Recent",
+          description: (j.job_description || "").replace(/<[^>]*>/g, " ").slice(0, 400),
+          skills: j.job_required_skills || [],
+        });
       }
+
+      // Wait 300ms between queries to stay within free tier
+      await new Promise((r) => setTimeout(r, 300));
     } catch (e) {
-      console.warn(`LinkedIn proxy fetch error for ${url}:`, e);
+      console.warn(`JSearch error for "${q}":`, e);
     }
   }
 
   // Deduplicate by URL
-  const seen = new Set<string>();
+  const seen = new Set();
   const unique = allJobs.filter((j) => {
-    if (seen.has(j.url)) return false;
+    if (!j.url || seen.has(j.url)) return false;
     seen.add(j.url);
     return true;
   });

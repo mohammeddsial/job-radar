@@ -179,7 +179,6 @@ export default function JobsPage() {
   const [loaded, setLoaded] = useState(false);
   const [linkedinLoading, setLinkedinLoading] = useState(false);
 
-  // Pagination
   const [currentPage, setCurrentPage] = useState(1);
   const JOBS_PER_PAGE = 50;
 
@@ -222,58 +221,54 @@ export default function JobsPage() {
     }
   };
 
-  // LinkedIn RSS via Vercel rewrite
+  // UPDATED: LinkedIn fetch with AI scoring
   const fetchLinkedInClient = useCallback(async () => {
     setLinkedinLoading(true);
-    const keywords = [
-      "webflow", "wordpress%20developer", "react%20typescript", "frontend%20developer",
-      "ui%20ux%20designer", "product%20designer", "technical%20project%20manager",
-      "jira%20administrator", "scrum%20master", "webflow%20dubai", "react%20developer%20uae"
-    ];
-
-    const newLinkedInJobs: Job[] = [];
-    for (const kw of keywords) {
+    try {
+      // 1. Get raw jobs from proxy
+      const res = await fetch("/api/linkedin-proxy");
+      const data = await res.json();
+      const rawJobs = data.jobs || [];
+      if (rawJobs.length === 0) return;
+  
+      let finalJobs = [];
+  
+      // 2. Try to score them with AI (but handle failure gracefully)
       try {
-        const url = `/linkedin-jobs/search?keywords=${kw}&location=Remote&start=0`;
-        const res = await fetch(url);
-        const xml = await res.text();
-        if (!xml.includes("<item>")) continue;
-        const items = xml.split("<item>");
-        for (const item of items) {
-          const title = item.match(/<title>(.*?)<\/title>/)?.[1];
-          const company = item.match(/<source>(.*?)<\/source>/)?.[1];
-          const link = item.match(/<link>(.*?)<\/link>/)?.[1];
-          const description = item.match(/<description>(.*?)<\/description>/)?.[1];
-          if (title && company && link) {
-            newLinkedInJobs.push({
-              title: title.replace(/&amp;/g, "&").trim(),
-              company: company.trim(),
-              location: "Remote",
-              url: link.trim(),
-              source: "LinkedIn",
-              posted: "Recent",
-              description: (description || "").replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim().slice(0, 300),
-              skills: [],
-              match_score: 0,
-              cold_message: "",
-            });
-          }
-        }
-      } catch (e) {
-        console.warn(`LinkedIn fetch error for "${kw}":`, e);
+        const scoreRes = await fetch("/api/score-jobs", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ jobs: rawJobs }),
+        });
+        const scoredData = await scoreRes.json();
+        finalJobs = scoredData.jobs || [];
+      } catch (scoreError) {
+        console.warn("Scoring failed, using raw jobs", scoreError);
+        // Fallback: assign 0% match and empty message
+        finalJobs = rawJobs.map((j: any) => ({
+          ...j,
+          match_score: 0,
+          cold_message: "",
+        }));
       }
+  
+      // 3. Merge with existing jobs (avoid duplicates)
+      setJobs((prev) => {
+        const existingUrls = new Set(prev.map(j => j.url));
+        const newJobs = finalJobs.filter((j: Job) => !existingUrls.has(j.url));
+        return [...prev, ...newJobs];
+      });
+    } catch (e) {
+      console.warn("LinkedIn fetch error:", e);
+    } finally {
+      setLinkedinLoading(false);
     }
+  }, []);
 
-    const seen = new Set(jobs.map(j => j.url));
-    const fresh = newLinkedInJobs.filter(j => !seen.has(j.url));
-    setJobs(prev => [...prev, ...fresh]);
-    setLinkedinLoading(false);
-  }, [jobs]);
-
-  // Auto‑fetch LinkedIn after load
+  // Auto-fetch LinkedIn after load
   useEffect(() => {
     if (loaded) fetchLinkedInClient();
-  }, [loaded]); // eslint-disable-line
+  }, [loaded]);
 
   const categories = ["all", "webflow", "react", "wordpress", "ui/ux"];
 
