@@ -219,3 +219,100 @@ export interface PortfolioSnapshot {
   };
   alerts: PortfolioAlert[];
 }
+
+// ── Agency Lead Hunter ───────────────────────
+export type AgencyLeadSource =
+  | "apollo"
+  | "product-hunt"
+  | "google-serp"
+  | "crunchbase"
+  | "linkedin"
+  | "manual";
+
+export type AgencyLeadStatus =
+  | "discovered"
+  | "email-queued"
+  | "email-sent"
+  | "opened"
+  | "clicked"
+  | "replied"
+  | "meeting-booked"
+  | "proposal-sent"
+  | "won"
+  | "lost";
+
+export type AgencyRegion = "UAE" | "US" | "UK" | "EU" | "APAC" | "OTHER";
+
+export interface AgencyLead {
+  id: string;
+  company: string;
+  website: string;
+  industry: string;
+  companySize: "1-10" | "11-50" | "51-200" | "201-500" | "500+";
+  country: string;
+  region: AgencyRegion;
+  contactName?: string;
+  contactTitle?: string;
+  contactEmail?: string;
+  contactLinkedIn?: string;
+  source: AgencyLeadSource;
+  painPoints: string[];
+  techStack?: string[];
+  fundingStage?: string;
+  recommendedService?: string;  // e.g. "Webflow", "React", "UI/UX"
+  relevanceScore: number;        // 0–100 AI-scored
+  status: AgencyLeadStatus;
+  notes?: string;
+  createdAt: string;
+  lastContactedAt?: string;
+}
+
+// ── Email Campaign Manager ────────────────────
+export type EmailStepStatus =
+  | "pending"
+  | "sent"
+  | "opened"
+  | "clicked"
+  | "replied"
+  | "bounced"
+  | "skipped";
+
+export interface EmailCampaignStep {
+  stepNumber: number;        // 1 = intro, 2 = follow-up, 3 = breakup
+  delayDays: number;         // days after previous step
+  subject: string;
+  bodyHtml: string;
+  bodyText: string;          // plain text fallback
+  scheduledAt: string;       // ISO string
+  sentAt?: string;
+  openedAt?: string;
+  clickedAt?: string;
+  replied: boolean;
+  status: EmailStepStatus;
+  resendMessageId?: string;  // Resend API message ID
+}
+
+export interface EmailCampaign {
+  id: string;
+  leadId: string;
+  companyName: string;
+  contactEmail: string;
+  contactName?: string;
+  campaignType: "cold-outreach" | "follow-up" | "reactivation";
+  steps: EmailCampaignStep[];
+  currentStep: number;
+  status: "active" | "paused" | "completed" | "unsubscribed" | "bounced";
+  startedAt: string;
+  completedAt?: string;
+  approved: boolean;
+}
+
+export interface EmailTrackingEvent {
+  id: string;
+  campaignId: string;
+  stepNumber: number;
+  eventType: "opened" | "clicked" | "replied" | "unsubscribed" | "bounced";
+  timestamp: string;
+  userAgent?: string;
+  clickedUrl?: string;
+}
