@@ -40,9 +40,12 @@ const BASE_URL    = process.env.NEXT_PUBLIC_URL || "https://yourapp.vercel.app";
 // ── Sender identity ──────────────────────────────────────────────
 const SENDER_CONTEXT = `
 Your name: Zahid Sher Sial
-Your agency: Warq Digital (warq.io)
-Your portfolio: shersial.com
-16 years building websites and digital products.
+Your agency: Warq Labs (waraqlabs.com)
+Your platforms:
+  - waraqlabs.com  → full-service web & design agency
+  - shersial.com   → personal portfolio & 32+ case studies
+  - getdesign.io   → design subscription ($2,500/mo flat fee)
+16 years building websites and digital products for UAE, UK, US, and global clients.
 
 Key portfolio projects to reference:
 - Al Ghurair Exchange (bilingual Webflow, 195 countries, live currency API)
@@ -176,7 +179,7 @@ Return JSON:
       {
         subject: `Quick thought on ${lead.company}'s website`,
         bodyText: `Hi ${lead.contactName?.split(" ")[0] || "there"},\n\nI came across ${lead.company} and noticed an opportunity to improve ${lead.painPoints[0] || "your web presence"}.\n\nI've helped similar companies in ${lead.industry} achieve measurable results. Would it make sense to have a quick 20-minute call this week?\n\nBest,\nZahid\nwarq.io`,
-        bodyHtml: `<p>Hi ${lead.contactName?.split(" ")[0] || "there"},</p><p>I came across <strong>${lead.company}</strong> and noticed an opportunity to improve ${lead.painPoints[0] || "your web presence"}.</p><p>I've helped similar companies in ${lead.industry} achieve measurable results.</p><p>Would it make sense to have a quick 20-minute call this week?</p><p>Best,<br>Zahid<br><a href="https://warq.io">warq.io</a></p>`,
+        bodyHtml: `<p>Hi ${lead.contactName?.split(" ")[0] || "there"},</p><p>I came across <strong>${lead.company}</strong> and noticed an opportunity to improve ${lead.painPoints[0] || "your web presence"}.</p><p>I've helped similar companies in ${lead.industry} achieve measurable results.</p><p>Would it make sense to have a quick 20-minute call this week?</p><p>Best,<br>Zahid<br><a href="https://waraqlabs.com">warq.io</a></p>`,
       },
       {
         subject: `Case study: ${lead.industry} redesign → +35% conversions`,
@@ -186,7 +189,7 @@ Return JSON:
       {
         subject: `Still relevant for ${lead.company}?`,
         bodyText: `Hi ${lead.contactName?.split(" ")[0] || "there"},\n\nI know your inbox is busy. Just a yes or no — is improving ${lead.company}'s web presence something on your radar for this quarter?\n\nEither way, no hard feelings.\nZahid | warq.io`,
-        bodyHtml: `<p>Hi ${lead.contactName?.split(" ")[0] || "there"},</p><p>I know your inbox is busy. Just a yes or no — is improving <strong>${lead.company}</strong>'s web presence something on your radar for this quarter?</p><p>Either way, no hard feelings.</p><p>Zahid | <a href="https://warq.io">warq.io</a></p>`,
+        bodyHtml: `<p>Hi ${lead.contactName?.split(" ")[0] || "there"},</p><p>I know your inbox is busy. Just a yes or no — is improving <strong>${lead.company}</strong>'s web presence something on your radar for this quarter?</p><p>Either way, no hard feelings.</p><p>Zahid | <a href="https://waraqlabs.com">warq.io</a></p>`,
       },
     ];
   }
